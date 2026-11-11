@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: QuestZones
+## Notes: Quest tracker grouped by zone
+## Author: Garion
+## Version: 0.1.0
+## RequiredDeps: Blizzard_ObjectiveTracker
+## SavedVariablesPerCharacter: QuestZonesCharDB
+
+Data.lua
+ItemButton.lua
+Tracker.lua
+Core.lua

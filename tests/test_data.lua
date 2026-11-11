@@ -1,0 +1,62 @@
+-- Run from the addon root: lua5.1 tests/test_data.lua
+local entries = {}
+
+C_QuestLog = {
+    GetNumQuestLogEntries = function() return #entries end,
+    GetInfo = function(i) return entries[i] end,
+    IsComplete = function(questID) return questID == 3 end,
+    GetQuestObjectives = function(questID) return { { text = "Objective " .. questID, finished = false } } end,
+}
+GetQuestLogSpecialItemInfo = function(logIndex)
+    if logIndex == 2 then return "|Hitem:5|h[Item]|h", 134400 end
+end
+OTHER = "Other"
+
+local ns = {}
+assert(loadfile("Data.lua"))("QuestZones", ns)
+
+local function Header(title)
+    return { isHeader = true, title = title }
+end
+
+local function Quest(logIndex, questID, isHidden)
+    return {
+        questLogIndex = logIndex, questID = questID, title = "Quest " .. questID, level = 10, isHidden = isHidden,
+    }
+end
+
+local function Names(zones)
+    local names = {}
+    for i, zone in ipairs(zones) do names[i] = zone.name end
+    return table.concat(names, ",")
+end
+
+-- Quests group under their preceding header; current zone first, others in log order.
+entries = {
+    Header("Elwynn"), Quest(2, 1),
+    Header("Westfall"), Quest(4, 2), Quest(5, 3),
+    Header("Duskwood"), Quest(7, 4),
+}
+local zones = ns.BuildZones({}, "Westfall")
+assert(Names(zones) == "Westfall,Elwynn,Duskwood", Names(zones))
+assert(#zones[1].quests == 2 and zones[1].quests[1].questID == 2)
+assert(zones[1].quests[1].complete == false and zones[1].quests[2].complete == true)
+assert(zones[2].quests[1].itemLink == "|Hitem:5|h[Item]|h")
+assert(zones[2].quests[1].logIndex == 2 and zones[2].quests[1].title == "Quest 1")
+assert(zones[2].quests[1].objectives[1].text == "Objective 1")
+
+-- Missing or unknown current zone keeps log order.
+assert(Names(ns.BuildZones({}, nil)) == "Elwynn,Westfall,Duskwood")
+assert(Names(ns.BuildZones({}, "Stormwind")) == "Elwynn,Westfall,Duskwood")
+
+-- Hidden-list and isHidden quests are excluded; zones left empty are dropped.
+entries = { Header("Elwynn"), Quest(2, 1), Header("Westfall"), Quest(4, 2), Quest(5, 3, true) }
+zones = ns.BuildZones({ [1] = true }, nil)
+assert(Names(zones) == "Westfall", Names(zones))
+assert(#zones[1].quests == 1 and zones[1].quests[1].questID == 2)
+
+-- Quests before any header go under OTHER.
+entries = { Quest(1, 9), Header("Elwynn"), Quest(3, 1) }
+assert(Names(ns.BuildZones({}, nil)) == "Other,Elwynn")
+
+print("test_data: OK")
