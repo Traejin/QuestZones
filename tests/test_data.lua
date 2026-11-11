@@ -19,10 +19,10 @@ local function Header(title)
     return { isHeader = true, title = title }
 end
 
-local function Quest(logIndex, questID, isHidden)
-    return {
-        questLogIndex = logIndex, questID = questID, title = "Quest " .. questID, level = 10, isHidden = isHidden,
-    }
+local function Quest(logIndex, questID, flags)
+    local quest = { questLogIndex = logIndex, questID = questID, title = "Quest " .. questID, level = 10 }
+    for key, value in pairs(flags or {}) do quest[key] = value end
+    return quest
 end
 
 local function Names(zones)
@@ -50,7 +50,7 @@ assert(Names(ns.BuildZones({}, nil)) == "Elwynn,Westfall,Duskwood")
 assert(Names(ns.BuildZones({}, "Stormwind")) == "Elwynn,Westfall,Duskwood")
 
 -- Hidden-list and isHidden quests are excluded; zones left empty are dropped.
-entries = { Header("Elwynn"), Quest(2, 1), Header("Westfall"), Quest(4, 2), Quest(5, 3, true) }
+entries = { Header("Elwynn"), Quest(2, 1), Header("Westfall"), Quest(4, 2), Quest(5, 3, { isHidden = true }) }
 zones = ns.BuildZones({ [1] = true }, nil)
 assert(Names(zones) == "Westfall", Names(zones))
 assert(#zones[1].quests == 1 and zones[1].quests[1].questID == 2)
@@ -58,5 +58,14 @@ assert(#zones[1].quests == 1 and zones[1].quests[1].questID == 2)
 -- Quests before any header go under OTHER.
 entries = { Quest(1, 9), Header("Elwynn"), Quest(3, 1) }
 assert(Names(ns.BuildZones({}, nil)) == "Other,Elwynn")
+
+-- World quests, bonus objectives and unfinished bounties are excluded, as in Blizzard's quest log.
+entries = {
+    Header("Elwynn"), Quest(2, 1, { isTask = true }), Quest(3, 2, { isBounty = true }),
+    Quest(4, 3, { isBounty = true }), Quest(5, 4),
+}
+zones = ns.BuildZones({}, nil)
+assert(#zones[1].quests == 2, #zones[1].quests)
+assert(zones[1].quests[1].questID == 3 and zones[1].quests[2].questID == 4)
 
 print("test_data: OK")

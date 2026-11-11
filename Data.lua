@@ -14,6 +14,14 @@ local function BuildQuest(info)
     }
 end
 
+-- Same visibility rule as Blizzard's quest log (QuestLogQuests_ShouldShowQuestButton), plus the hidden list.
+local function IsShown(info, hidden)
+    if info.isHidden or info.isTask or hidden[info.questID] then
+        return false
+    end
+    return not info.isBounty or C_QuestLog.IsComplete(info.questID)
+end
+
 local function GroupByHeader(hidden)
     local zones, zone = {}, nil
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
@@ -21,7 +29,7 @@ local function GroupByHeader(hidden)
         if info and info.isHeader then
             zone = { name = info.title, quests = {} }
             zones[#zones + 1] = zone
-        elseif info and not info.isHidden and not hidden[info.questID] then
+        elseif info and IsShown(info, hidden) then
             if not zone then
                 zone = { name = OTHER, quests = {} }
                 zones[#zones + 1] = zone
