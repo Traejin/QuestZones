@@ -144,14 +144,19 @@ local function LayoutQuest(quest, y, counts)
     if not state.quests[quest.questID] then
         y = LayoutObjectives(quest, y, counts)
     end
+    -- Right-hand column: item button, then Spoken's Play button below it.
+    local column = top
     if quest.itemLink then
         counts.items = counts.items + 1
         if not InCombatLockdown() then
             ns.SetItemButton(counts.items, quest, top)
         end
-        y = math.min(y, top - ITEM_HEIGHT - SPACING)
+        column = column - ITEM_HEIGHT - SPACING
     end
-    return y - SPACING
+    if ns.SetPlayButton(row, quest.questID, column) then
+        column = column - ns.PLAY_SIZE - SPACING
+    end
+    return math.min(y, column) - SPACING
 end
 
 local function LayoutZone(zone, y, counts)

@@ -5,8 +5,10 @@
 ## Version: 0.1.0
 ## RequiredDeps: Blizzard_ObjectiveTracker
 ## SavedVariablesPerCharacter: QuestZonesCharDB
+## OptionalDeps: Spoken, Spoken_Quests
 
 Data.lua
 ItemButton.lua
 Tracker.lua
+Spoken.lua
 Core.lua
