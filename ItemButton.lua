@@ -12,7 +12,7 @@ end
 local function CreateItemButton()
     local button = CreateFrame("Button", nil, ns.tracker, "SecureActionButtonTemplate")
     button:SetSize(26, 26)
-    button:RegisterForClicks("AnyUp")
+    button:RegisterForClicks("AnyUp", "AnyDown")
     button:SetAttribute("type", "item")
     button.icon = button:CreateTexture(nil, "BORDER")
     button.icon:SetAllPoints()
