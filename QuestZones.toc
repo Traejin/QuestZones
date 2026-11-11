@@ -2,7 +2,7 @@
 ## Title: QuestZones
 ## Notes: Quest tracker grouped by zone
 ## Author: Garion
-## Version: 0.1.0
+## Version: @project-version@
 ## RequiredDeps: Blizzard_ObjectiveTracker
 ## SavedVariablesPerCharacter: QuestZonesCharDB
 ## OptionalDeps: Spoken, Spoken_Quests

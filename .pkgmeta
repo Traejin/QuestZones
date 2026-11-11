@@ -1,0 +1,5 @@
+package-as: QuestZones
+
+ignore:
+  - docs
+  - tests
