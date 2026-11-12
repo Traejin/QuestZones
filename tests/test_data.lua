@@ -11,6 +11,7 @@ GetQuestLogSpecialItemInfo = function(logIndex)
     if logIndex == 2 then return "|Hitem:5|h[Item]|h", 134400 end
 end
 OTHER = "Other"
+COMPLETE = "Complete"
 
 local ns = {}
 assert(loadfile("Data.lua"))("QuestZones", ns)
@@ -67,5 +68,9 @@ entries = {
 zones = ns.BuildZones({}, nil)
 assert(#zones[1].quests == 2, #zones[1].quests)
 assert(zones[1].quests[1].questID == 3 and zones[1].quests[2].questID == 4)
+
+-- Completed quests read "<title> (Complete)"; others keep their title.
+assert(ns.QuestTitle({ title = "Quest 3", complete = true }) == "Quest 3 (Complete)")
+assert(ns.QuestTitle({ title = "Quest 2", complete = false }) == "Quest 2")
 
 print("test_data: OK")

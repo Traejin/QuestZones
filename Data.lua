@@ -54,3 +54,8 @@ function ns.BuildZones(hidden, currentZone)
     end
     return result
 end
+
+-- Completed quests read "<title> (Complete)", as Blizzard's quest info panel writes it (QuestInfo.lua).
+function ns.QuestTitle(quest)
+    return quest.complete and quest.title .. " (" .. COMPLETE .. ")" or quest.title
+end

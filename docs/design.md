@@ -15,7 +15,8 @@ in the Blizzard tracker's art, fonts and colors. Equivalent to Questie's tracker
 4. Individual quests collapse to their title line (Ctrl-click the title).
 5. The whole tracker collapses to its top header.
 6. Collapse state is session-only. It resets on reload.
-7. Quest title is colored by difficulty; objectives show progress; completed quests show "Ready for turn-in".
+7. Quest title is colored by difficulty; objectives show progress; completed quests show no objectives and read
+   "<title> (Complete)".
 8. Left-click a quest title opens it in the world map quest log.
 9. Quests with a usable quest item show a clickable item button, usable in combat.
 10. Right-click a quest title opens a context menu: super-track, show on map, stop tracking, share, abandon.
@@ -98,7 +99,7 @@ All textures, fonts and colors are Blizzard's, from `Blizzard_ObjectiveTracker`.
 3. Quest title: font `ObjectiveTrackerLineFont`, color `GetQuestDifficultyColor(level)`.
 4. Objective lines: indented, dash prefix, font `ObjectiveTrackerLineFont`, color `OBJECTIVE_TRACKER_COLOR.Normal`
    or `.Complete` when finished.
-5. Completed quest: one line `QUEST_WATCH_QUEST_READY`, color `OBJECTIVE_TRACKER_COLOR.Complete`.
+5. Completed quest: no objective lines; title `<title> (COMPLETE)`, as `QuestInfo.lua` writes it.
 6. Item button: 26x26 at the quest row's right edge, normal texture atlas `UI-QuestTrackerButton-QuestItem-Frame`,
    icon from `GetQuestLogSpecialItemInfo`. Template `SecureActionButtonTemplate`, attributes `type = "item"`,
    `item = itemLink`. Tooltip `GameTooltip:SetQuestLogSpecialItem(logIndex)`.

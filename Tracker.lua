@@ -116,7 +116,7 @@ end
 
 local function LayoutObjectives(quest, y, counts)
     if quest.complete then
-        return AddLine(QUEST_WATCH_QUEST_READY, OBJECTIVE_TRACKER_COLOR.Complete, y, counts)
+        return y
     end
     for _, objective in ipairs(quest.objectives) do
         if objective.text and objective.text ~= "" then
@@ -134,7 +134,7 @@ local function LayoutQuest(quest, y, counts)
     local width = Width() - QUEST_INDENT - ITEM_SPACE
     row.questID = quest.questID
     row.Text:SetWidth(width)
-    row.Text:SetText(quest.title)
+    row.Text:SetText(ns.QuestTitle(quest))
     local color = GetQuestDifficultyColor(quest.level, quest.isScaling, quest.questID)
     row.Text:SetTextColor(color.r, color.g, color.b)
     row:SetSize(width, row.Text:GetStringHeight())
