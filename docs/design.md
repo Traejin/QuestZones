@@ -23,12 +23,13 @@ in the Blizzard tracker's art, fonts and colors. Equivalent to Questie's tracker
 11. "Stop tracking" hides the quest from the tracker. Checking its track box in the quest log shows it again.
 12. The entire Blizzard objective tracker is hidden (all modules: quests, campaign, achievements, scenarios,
     world quests, bonus objectives, professions, monthly activities).
-13. Position is set with Blizzard Edit Mode, by moving the (empty) Blizzard objective tracker.
+13. Position and height are set with Blizzard Edit Mode, by moving the (empty) Blizzard objective tracker and
+    its Height setting (shown once the tracker is out of its default position). Width is fixed.
 
 ## Out of scope
 
 1. Own position, lock or move code (Edit Mode covers it).
-2. Scroll frame for overflow; content clips at screen bottom. Add if overflow becomes a problem.
+2. Scroll frame for overflow; content past the tracker height is left out. Add if overflow becomes a problem.
 3. Locale file: all visible strings are existing Blizzard globals, already translated.
 4. Flavor-specific `_Forever.toc`; the plain `.toc` is sufficient.
 5. Persisting collapse state.
@@ -51,6 +52,8 @@ Fallback: if `ObjectiveTrackerManager.SetCanAddModules` is nil, call `ObjectiveT
 
 The addon frame is parented to `UIParent` and anchored TOPLEFT and TOPRIGHT to `ObjectiveTrackerFrame`.
 Edit Mode moves the Blizzard frame; the addon frame follows. Anchoring works while the anchor frame is hidden.
+Height is `ObjectiveTrackerFrame:GetHeight()`: zone headers and quests that would end below it are left out,
+and nothing after them shows. An `OnSizeChanged` hook on `ObjectiveTrackerFrame` redraws when it changes.
 
 ### Files (TOC load order)
 
@@ -166,7 +169,7 @@ Secure item buttons, and frames with secure children, cannot be created, shown, 
    4. Zones left empty are dropped.
 2. In-game checklist:
    1. Blizzard tracker hidden in all situations, including after `/reload`.
-   2. Edit Mode moves the addon tracker.
+   2. Edit Mode moves the addon tracker; its Height setting limits how many quests show.
    3. Zone, quest (Ctrl-click) and whole-tracker collapse.
    4. Left-click, Shift-click and every context-menu entry.
    5. Item button usable in combat.

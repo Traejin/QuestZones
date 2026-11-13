@@ -27,6 +27,9 @@ header.MinimizeButton:SetScript("OnClick", function()
     ns.RequestRefresh()
 end)
 
+-- Edit Mode's Height setting resizes the emptied Blizzard tracker (ObjectiveTrackerContainerMixin:UpdateHeight).
+ObjectiveTrackerFrame:HookScript("OnSizeChanged", function() ns.RequestRefresh() end)
+
 local function ToggleZone(name)
     state.zones[name] = not state.zones[name]
     ns.RequestRefresh()
@@ -159,7 +162,23 @@ local function LayoutQuest(quest, y, counts)
     return math.min(y, column) - SPACING
 end
 
+-- Content below the Blizzard tracker's height (Edit Mode Height) is left out, as Blizzard's tracker does.
+-- Rolls `counts` back to `before` when `bottom` does not fit, so the frames laid out since are hidden.
+local function Fits(counts, before, bottom)
+    if -bottom <= counts.maxHeight then
+        return true
+    end
+    counts.zones, counts.rows, counts.lines, counts.items = before.zones, before.rows, before.lines, before.items
+    counts.full = true
+    return false
+end
+
+local function Snapshot(counts)
+    return { zones = counts.zones, rows = counts.rows, lines = counts.lines, items = counts.items }
+end
+
 local function LayoutZone(zone, y, counts)
+    local before = Snapshot(counts)
     counts.zones = counts.zones + 1
     local zoneHeader = Acquire(zoneHeaders, counts.zones, CreateZoneHeader)
     local collapsed = state.zones[zone.name]
@@ -169,22 +188,29 @@ local function LayoutZone(zone, y, counts)
     zoneHeader:ClearAllPoints()
     zoneHeader:SetPoint("TOPLEFT", tracker, "TOPLEFT", 0, y)
     y = y - zoneHeader:GetHeight() - SPACING
-    if collapsed then
+    if not Fits(counts, before, y) or collapsed then
         return y
     end
     for _, quest in ipairs(zone.quests) do
-        y = LayoutQuest(quest, y, counts)
+        before = Snapshot(counts)
+        local bottom = LayoutQuest(quest, y, counts)
+        if not Fits(counts, before, bottom) then
+            return y
+        end
+        y = bottom
     end
     return y
 end
 
 local function Layout(zones)
-    local counts = { zones = 0, rows = 0, lines = 0, items = 0 }
+    local maxHeight = ObjectiveTrackerFrame:GetHeight()
+    local counts = { zones = 0, rows = 0, lines = 0, items = 0, maxHeight = maxHeight > 0 and maxHeight or math.huge }
     header:SetCollapsed(state.all)
     local y = -header:GetHeight() - SPACING
-    if not state.all then
-        for _, zone in ipairs(zones) do
-            y = LayoutZone(zone, y, counts)
+    for _, zone in ipairs(state.all and {} or zones) do
+        y = LayoutZone(zone, y, counts)
+        if counts.full then
+            break
         end
     end
     HideFrom(zoneHeaders, counts.zones + 1)
@@ -197,7 +223,7 @@ end
 
 -- Everything that decides which frames exist and where item buttons go.
 local function StructureKey(zones)
-    local parts = { tostring(state.all) }
+    local parts = { tostring(state.all), ObjectiveTrackerFrame:GetHeight() }
     for _, zone in ipairs(zones) do
         parts[#parts + 1] = zone.name .. tostring(state.zones[zone.name])
         for _, quest in ipairs(zone.quests) do
