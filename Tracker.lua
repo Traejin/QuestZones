@@ -34,7 +34,6 @@ tracker:SetScript("OnMouseWheel", function(_, delta)
 end)
 
 local header = CreateFrame("Frame", nil, tracker, "ObjectiveTrackerContainerHeaderTemplate")
-header:SetPoint("TOP")
 header.Text:SetText(TRACKER_HEADER_QUESTS)
 header.MinimizeButton:SetScript("OnClick", function()
     state.all = not state.all
@@ -43,6 +42,36 @@ end)
 
 -- Edit Mode's Height setting resizes the emptied Blizzard tracker (ObjectiveTrackerContainerMixin:UpdateHeight).
 ObjectiveTrackerFrame:HookScript("OnSizeChanged", function() ns.RequestRefresh() end)
+
+-- Blizzard's Quest Timers box (Blizzard_QuestTimer, classic clients) stays in the right-hand frame stack, drawn
+-- behind a tracker moved in Edit Mode. While it shows over the tracker, the content starts below it.
+if QuestTimerFrame then
+    for _, script in ipairs({ "OnShow", "OnHide", "OnSizeChanged" }) do
+        QuestTimerFrame:HookScript(script, function() ns.RequestRefresh() end)
+    end
+end
+
+local function MaxHeight()
+    local height = ObjectiveTrackerFrame:GetHeight()
+    return height > 0 and height or math.huge
+end
+
+local function TimerOffset()
+    local timer = QuestTimerFrame
+    if not (timer and timer:IsShown()) then
+        return 0
+    end
+    local top, left, right = tracker:GetTop(), tracker:GetLeft(), tracker:GetRight()
+    local timerTop, timerBottom = timer:GetTop(), timer:GetBottom()
+    local timerLeft, timerRight = timer:GetLeft(), timer:GetRight()
+    if not (top and left and right and timerTop and timerBottom and timerLeft and timerRight) then
+        return 0
+    end
+    if timerRight <= left or timerLeft >= right or timerBottom >= top or timerTop <= top - MaxHeight() then
+        return 0
+    end
+    return top - timerBottom
+end
 
 local function ToggleZone(name)
     state.zones[name] = not state.zones[name]
@@ -236,12 +265,12 @@ local function LayoutZone(zone, y, counts)
     return y
 end
 
-local function Layout(zones)
-    local maxHeight = ObjectiveTrackerFrame:GetHeight()
-    local counts = { zones = 0, rows = 0, lines = 0, items = 0, skip = state.offset,
-        maxHeight = maxHeight > 0 and maxHeight or math.huge }
+local function Layout(zones, timerOffset)
+    local counts = { zones = 0, rows = 0, lines = 0, items = 0, skip = state.offset, maxHeight = MaxHeight() }
     header:SetCollapsed(state.all)
-    local y = -header:GetHeight() - SPACING
+    header:ClearAllPoints()
+    header:SetPoint("TOP", tracker, "TOP", 0, -timerOffset)
+    local y = -timerOffset - header:GetHeight() - SPACING
     for _, zone in ipairs(state.all and {} or zones) do
         y = LayoutZone(zone, y, counts)
         if counts.full then
@@ -267,8 +296,8 @@ local function StepCount(zones)
 end
 
 -- Everything that decides which frames exist and where item buttons go.
-local function StructureKey(zones)
-    local parts = { tostring(state.all), ObjectiveTrackerFrame:GetHeight(), state.offset }
+local function StructureKey(zones, timerOffset)
+    local parts = { tostring(state.all), ObjectiveTrackerFrame:GetHeight(), state.offset, timerOffset }
     for _, zone in ipairs(zones) do
         parts[#parts + 1] = zone.name .. tostring(state.zones[zone.name])
         for _, quest in ipairs(zone.quests) do
@@ -282,12 +311,13 @@ end
 -- In combat, only a structurally unchanged layout runs (text in place); the caller re-renders after combat.
 function ns.Render(zones)
     state.offset = math.max(0, math.min(state.offset, StepCount(zones) - 1))
-    local key = StructureKey(zones)
+    local timerOffset = TimerOffset()
+    local key = StructureKey(zones, timerOffset)
     local inCombat = InCombatLockdown()
     if inCombat and key ~= lastKey then
         return false
     end
-    Layout(zones)
+    Layout(zones, timerOffset)
     lastKey = key
     return not inCombat
 end

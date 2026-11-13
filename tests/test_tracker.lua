@@ -13,6 +13,11 @@ local function NewRegion(height)
     function region:SetSize(_, h) self.height = h end
     function region:GetHeight() return self.height end
     function region:GetWidth() return 0 end
+    function region:GetTop() return self.top end
+    function region:GetBottom() return self.bottom end
+    function region:GetLeft() return self.left end
+    function region:GetRight() return self.right end
+    function region:IsShown() return self.shown end
     function region:GetStringHeight() return 12 end
     function region:SetText(text) self.text = text end
     function region:SetTextColor() end
@@ -44,6 +49,10 @@ ObjectiveTrackerFrame = NewRegion()
 function ObjectiveTrackerFrame:HookScript(script, fn)
     if script == "OnSizeChanged" then sizeHook = fn end
 end
+local timerHooks = {}
+QuestTimerFrame = NewRegion()
+QuestTimerFrame.shown = false
+function QuestTimerFrame:HookScript(script, fn) timerHooks[script] = fn end
 TRACKER_HEADER_QUESTS = "Quests"
 OBJECTIVE_TRACKER_COLOR = { Normal = { r = 1, g = 1, b = 1 }, Complete = { r = 0.6, g = 0.6, b = 0.6 } }
 GetQuestDifficultyColor = function() return { r = 1, g = 1, b = 0 } end
@@ -177,5 +186,43 @@ ns.tracker.scripts.OnMouseWheel(ns.tracker, 1)
 assert(ns.Render(zones) == false and ShownQuests() == before, ShownQuests())
 inCombat = false
 assert(ns.Render(zones) == true and ShownQuests() ~= before, ShownQuests())
+
+-- Blizzard's Quest Timers box over the tracker's top: content starts below the box (52 lower here), so at
+-- height 150 only quest 1 fits.
+Wheel(1, 10)
+ObjectiveTrackerFrame.height = 150
+ns.tracker.top, ns.tracker.left, ns.tracker.right = 500, 1000, 1260
+QuestTimerFrame.top, QuestTimerFrame.bottom, QuestTimerFrame.left, QuestTimerFrame.right = 520, 448, 1050, 1208
+QuestTimerFrame.shown = true
+ns.Render(zones)
+assert(ShownQuests() == "1", ShownQuests())
+
+-- Beside the tracker, below its height limit, or hidden: no push.
+QuestTimerFrame.left, QuestTimerFrame.right = 600, 758
+ns.Render(zones)
+assert(ShownQuests() == "1,2", ShownQuests())
+QuestTimerFrame.left, QuestTimerFrame.right, QuestTimerFrame.top, QuestTimerFrame.bottom = 1050, 1208, 300, 228
+ns.Render(zones)
+assert(ShownQuests() == "1,2", ShownQuests())
+QuestTimerFrame.top, QuestTimerFrame.bottom = 520, 448
+QuestTimerFrame.shown = false
+ns.Render(zones)
+assert(ShownQuests() == "1,2", ShownQuests())
+
+-- Pushed down in combat waits for combat to end (it moves the secure item buttons).
+QuestTimerFrame.shown = true
+inCombat = true
+assert(ns.Render(zones) == false and ShownQuests() == "1,2", ShownQuests())
+inCombat = false
+ns.Render(zones)
+assert(ShownQuests() == "1", ShownQuests())
+
+-- The box showing, hiding or resizing redraws.
+refreshes = 0
+for _, script in ipairs({ "OnShow", "OnHide", "OnSizeChanged" }) do
+    assert(timerHooks[script], "no " .. script .. " hook")
+    timerHooks[script]()
+end
+assert(refreshes == 3, refreshes)
 
 print("test_tracker: OK")

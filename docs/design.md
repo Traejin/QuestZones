@@ -107,6 +107,14 @@ All textures, fonts and colors are Blizzard's, from `Blizzard_ObjectiveTracker`.
    icon from `GetQuestLogSpecialItemInfo`. Template `SecureActionButtonTemplate`, attributes `type = "item"`,
    `item = itemLink`. Tooltip `GameTooltip:SetQuestLogSpecialItem(logIndex)`.
 
+### Quest Timers box
+
+Blizzard's Quest Timers box (`QuestTimerFrame`, Blizzard_QuestTimer, classic clients, `BACKGROUND` strata) stays in
+the right-hand managed frame stack. With the tracker moved in Edit Mode it can sit behind the tracker. While it is
+shown and overlaps the tracker (horizontally, and vertically within the height limit), the top header and content
+start below its bottom edge. Its `OnShow`, `OnHide` and `OnSizeChanged` redraw the tracker. In combat the push waits
+for combat to end.
+
 ### Scrolling
 
 1. Mouse wheel over the tracker scrolls one step per notch: one quest, or one collapsed zone.
