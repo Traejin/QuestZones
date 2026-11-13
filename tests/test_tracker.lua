@@ -19,7 +19,8 @@ local function NewRegion(height)
     function region:Show() self.shown = true end
     function region:Hide() self.shown = false end
     function region:EnableMouse() end
-    function region:SetScript() end
+    function region:SetScript(script, fn) self.scripts = self.scripts or {}; self.scripts[script] = fn end
+    function region:EnableMouseWheel() end
     function region:RegisterForClicks() end
     function region:SetCollapsed() end
     function region:CreateFontString() return NewRegion() end
@@ -46,7 +47,8 @@ end
 TRACKER_HEADER_QUESTS = "Quests"
 OBJECTIVE_TRACKER_COLOR = { Normal = { r = 1, g = 1, b = 1 }, Complete = { r = 0.6, g = 0.6, b = 0.6 } }
 GetQuestDifficultyColor = function() return { r = 1, g = 1, b = 0 } end
-InCombatLockdown = function() return false end
+local inCombat = false
+InCombatLockdown = function() return inCombat end
 format = string.format
 
 local refreshes = 0
@@ -103,5 +105,77 @@ assert(Shown(rows) == 0 and Shown(zoneHeaders) == 0, Shown(zoneHeaders) .. " zon
 assert(sizeHook, "no OnSizeChanged hook")
 sizeHook()
 assert(refreshes == 1, refreshes)
+
+local function ShownQuests()
+    local ids = {}
+    for _, row in ipairs(rows) do
+        if row.shown then ids[#ids + 1] = row.questID end
+    end
+    return table.concat(ids, ",")
+end
+
+local function ShownZones()
+    local names = {}
+    for _, zoneHeader in ipairs(zoneHeaders) do
+        if zoneHeader.shown then names[#names + 1] = zoneHeader.zoneName end
+    end
+    return table.concat(names, ",")
+end
+
+local function Wheel(delta, times)
+    for _ = 1, times or 1 do
+        ns.tracker.scripts.OnMouseWheel(ns.tracker, delta)
+        ns.Render(zones)
+    end
+end
+
+-- Height 150 shows two quests. One notch down drops quest 1; Elwynn's header stays above quest 2.
+ObjectiveTrackerFrame.height = 150
+ns.Render(zones)
+assert(ShownQuests() == "1,2", ShownQuests())
+Wheel(-1)
+assert(ShownQuests() == "2,3" and ShownZones() == "Elwynn", ShownQuests() .. " / " .. ShownZones())
+
+-- Scrolling down stops once the rest fits: quest 4 with Westfall and quest 5 end exactly at 150.
+Wheel(-1, 5)
+assert(ShownQuests() == "4,5" and ShownZones() == "Elwynn,Westfall", ShownQuests() .. " / " .. ShownZones())
+
+-- Scrolling up stops at the top.
+Wheel(1, 10)
+assert(ShownQuests() == "1,2", ShownQuests())
+
+-- Nothing to scroll when everything fits.
+ObjectiveTrackerFrame.height = 0
+ns.Render(zones)
+Wheel(-1)
+assert(ShownQuests() == "1,2,3,4,5", ShownQuests())
+
+-- A collapsed zone is one step: Elwynn collapsed, then one notch shows Westfall alone.
+ObjectiveTrackerFrame.height = 92
+zoneHeaders[1].scripts.OnMouseUp(zoneHeaders[1])
+ns.Render(zones)
+assert(ShownZones() == "Elwynn" and ShownQuests() == "", ShownQuests() .. " / " .. ShownZones())
+Wheel(-1)
+assert(ShownZones() == "Westfall" and ShownQuests() == "5", ShownQuests() .. " / " .. ShownZones())
+Wheel(1)
+assert(ShownZones() == "Elwynn", ShownZones())
+zoneHeaders[1].scripts.OnMouseUp(zoneHeaders[1])
+
+-- Fewer quests than the scroll position: it moves back to the last quest.
+ObjectiveTrackerFrame.height = 150
+ns.Render(zones)
+Wheel(-1, 3)
+assert(ShownQuests() == "4,5", ShownQuests())
+ns.Render({ { name = "Elwynn", quests = { Quest(1), Quest(2) } } })
+assert(ShownQuests() == "2", ShownQuests())
+
+-- In combat a notch waits; it applies once combat ends.
+ns.Render(zones)
+inCombat = true
+local before = ShownQuests()
+ns.tracker.scripts.OnMouseWheel(ns.tracker, 1)
+assert(ns.Render(zones) == false and ShownQuests() == before, ShownQuests())
+inCombat = false
+assert(ns.Render(zones) == true and ShownQuests() ~= before, ShownQuests())
 
 print("test_tracker: OK")

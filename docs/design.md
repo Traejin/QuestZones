@@ -29,7 +29,7 @@ in the Blizzard tracker's art, fonts and colors. Equivalent to Questie's tracker
 ## Out of scope
 
 1. Own position, lock or move code (Edit Mode covers it).
-2. Scroll frame for overflow; content past the tracker height is left out. Add if overflow becomes a problem.
+2. Scroll bar or scroll arrows; the mouse wheel scrolls, with no indicator of hidden quests.
 3. Locale file: all visible strings are existing Blizzard globals, already translated.
 4. Flavor-specific `_Forever.toc`; the plain `.toc` is sufficient.
 5. Persisting collapse state.
@@ -106,6 +106,15 @@ All textures, fonts and colors are Blizzard's, from `Blizzard_ObjectiveTracker`.
 6. Item button: 26x26 at the quest row's right edge, normal texture atlas `UI-QuestTrackerButton-QuestItem-Frame`,
    icon from `GetQuestLogSpecialItemInfo`. Template `SecureActionButtonTemplate`, attributes `type = "item"`,
    `item = itemLink`. Tooltip `GameTooltip:SetQuestLogSpecialItem(logIndex)`.
+
+### Scrolling
+
+1. Mouse wheel over the tracker scrolls one step per notch: one quest, or one collapsed zone.
+2. An expanded zone's header is drawn above its first quest not scrolled past.
+3. Down only while content is cut off at the height limit; up stops at the top. The position is clamped when
+   quests disappear.
+4. The tracker frame takes the content height (wheel area), set out of combat only. Wheel only: clicks pass through.
+5. In combat a scroll is applied after combat (it moves secure item buttons).
 
 ### Quest title clicks
 

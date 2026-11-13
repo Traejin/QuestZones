@@ -7,17 +7,31 @@ local ITEM_SPACE = 30
 local ITEM_HEIGHT = 26
 local DEFAULT_WIDTH = 260
 
--- Session-only collapse state.
-local state = { all = false, zones = {}, quests = {} }
+-- Session-only collapse and scroll state. `offset` counts steps scrolled past: one per quest, one per collapsed zone.
+local state = { all = false, zones = {}, quests = {}, offset = 0, canScrollDown = false }
 local zoneHeaders, questRows, lines = {}, {}, {}
 local lastKey
 
--- Anchored to the emptied Blizzard tracker so Edit Mode positions it. Never moved, sized or hidden after this.
+-- Anchored to the emptied Blizzard tracker so Edit Mode positions it. Never moved or hidden after this; its height
+-- follows the content (wheel area) and is set out of combat only, as it parents secure item buttons.
 local tracker = CreateFrame("Frame", nil, UIParent)
 tracker:SetPoint("TOPLEFT", ObjectiveTrackerFrame, "TOPLEFT")
 tracker:SetPoint("TOPRIGHT", ObjectiveTrackerFrame, "TOPRIGHT")
 tracker:SetHeight(1)
 ns.tracker = tracker
+
+-- Wheel only; clicks on empty space still reach the world.
+tracker:EnableMouseWheel(true)
+tracker:SetScript("OnMouseWheel", function(_, delta)
+    if delta > 0 and state.offset > 0 then
+        state.offset = state.offset - 1
+    elseif delta < 0 and state.canScrollDown then
+        state.offset = state.offset + 1
+    else
+        return
+    end
+    ns.RequestRefresh()
+end)
 
 local header = CreateFrame("Frame", nil, tracker, "ObjectiveTrackerContainerHeaderTemplate")
 header:SetPoint("TOP")
@@ -177,34 +191,55 @@ local function Snapshot(counts)
     return { zones = counts.zones, rows = counts.rows, lines = counts.lines, items = counts.items }
 end
 
-local function LayoutZone(zone, y, counts)
-    local before = Snapshot(counts)
+-- True while scroll steps remain to pass; consumes one.
+local function Skip(counts)
+    if counts.skip > 0 then
+        counts.skip = counts.skip - 1
+        return true
+    end
+    return false
+end
+
+local function LayoutZoneHeader(zone, collapsed, y, counts)
     counts.zones = counts.zones + 1
     local zoneHeader = Acquire(zoneHeaders, counts.zones, CreateZoneHeader)
-    local collapsed = state.zones[zone.name]
     zoneHeader.zoneName = zone.name
     zoneHeader:SetCollapsed(collapsed)
     zoneHeader.Text:SetText(collapsed and format("%s (%d)", zone.name, #zone.quests) or zone.name)
     zoneHeader:ClearAllPoints()
     zoneHeader:SetPoint("TOPLEFT", tracker, "TOPLEFT", 0, y)
-    y = y - zoneHeader:GetHeight() - SPACING
-    if not Fits(counts, before, y) or collapsed then
-        return y
-    end
-    for _, quest in ipairs(zone.quests) do
-        before = Snapshot(counts)
-        local bottom = LayoutQuest(quest, y, counts)
-        if not Fits(counts, before, bottom) then
+    return y - zoneHeader:GetHeight() - SPACING
+end
+
+-- An expanded zone's header is drawn above its first quest not scrolled past.
+local function LayoutZone(zone, y, counts)
+    if state.zones[zone.name] then
+        if Skip(counts) then
             return y
         end
-        y = bottom
+        local before = Snapshot(counts)
+        local bottom = LayoutZoneHeader(zone, true, y, counts)
+        return Fits(counts, before, bottom) and bottom or y
+    end
+    local headed = false
+    for _, quest in ipairs(zone.quests) do
+        if not Skip(counts) then
+            local before = Snapshot(counts)
+            local top = headed and y or LayoutZoneHeader(zone, false, y, counts)
+            local bottom = LayoutQuest(quest, top, counts)
+            if not Fits(counts, before, bottom) then
+                return y
+            end
+            headed, y = true, bottom
+        end
     end
     return y
 end
 
 local function Layout(zones)
     local maxHeight = ObjectiveTrackerFrame:GetHeight()
-    local counts = { zones = 0, rows = 0, lines = 0, items = 0, maxHeight = maxHeight > 0 and maxHeight or math.huge }
+    local counts = { zones = 0, rows = 0, lines = 0, items = 0, skip = state.offset,
+        maxHeight = maxHeight > 0 and maxHeight or math.huge }
     header:SetCollapsed(state.all)
     local y = -header:GetHeight() - SPACING
     for _, zone in ipairs(state.all and {} or zones) do
@@ -213,17 +248,27 @@ local function Layout(zones)
             break
         end
     end
+    state.canScrollDown = counts.full or false
     HideFrom(zoneHeaders, counts.zones + 1)
     HideFrom(questRows, counts.rows + 1)
     HideFrom(lines, counts.lines + 1)
     if not InCombatLockdown() then
         ns.HideItemButtonsFrom(counts.items + 1)
+        tracker:SetHeight(math.max(1, -y))
     end
+end
+
+local function StepCount(zones)
+    local steps = 0
+    for _, zone in ipairs(zones) do
+        steps = steps + (state.zones[zone.name] and 1 or #zone.quests)
+    end
+    return steps
 end
 
 -- Everything that decides which frames exist and where item buttons go.
 local function StructureKey(zones)
-    local parts = { tostring(state.all), ObjectiveTrackerFrame:GetHeight() }
+    local parts = { tostring(state.all), ObjectiveTrackerFrame:GetHeight(), state.offset }
     for _, zone in ipairs(zones) do
         parts[#parts + 1] = zone.name .. tostring(state.zones[zone.name])
         for _, quest in ipairs(zone.quests) do
@@ -236,6 +281,7 @@ end
 
 -- In combat, only a structurally unchanged layout runs (text in place); the caller re-renders after combat.
 function ns.Render(zones)
+    state.offset = math.max(0, math.min(state.offset, StepCount(zones) - 1))
     local key = StructureKey(zones)
     local inCombat = InCombatLockdown()
     if inCombat and key ~= lastKey then
