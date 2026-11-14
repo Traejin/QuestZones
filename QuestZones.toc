@@ -6,6 +6,7 @@
 ## RequiredDeps: Blizzard_ObjectiveTracker
 ## SavedVariablesPerCharacter: QuestZonesCharDB
 ## OptionalDeps: Spoken, Spoken_Quests
+## X-Curse-Project-ID: 1805210
 
 Data.lua
 ItemButton.lua
